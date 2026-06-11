@@ -74,6 +74,16 @@ export interface PhraseVoteStats {
   community_accuracy_pct: number;
 }
 
+export interface WordAnnotation {
+  id: string;
+  vote_id: string;
+  session_id: string;
+  phrase_id: string;
+  word_indices: number[];
+  free_text: string | null;
+  created_at: string;
+}
+
 // Supabase Database type for the client
 export interface Database {
   public: {
@@ -92,6 +102,11 @@ export interface Database {
         Row: Vote;
         Insert: Omit<Vote, "id" | "voted_at">;
         Update: Partial<Omit<Vote, "id">>;
+      };
+      word_annotations: {
+        Row: WordAnnotation;
+        Insert: Omit<WordAnnotation, "id" | "created_at">;
+        Update: Partial<Omit<WordAnnotation, "id">>;
       };
     };
     Views: {

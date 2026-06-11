@@ -155,12 +155,35 @@ export async function submitVote(
   phraseId: string,
   vote: SourceType,
   wasCorrect: boolean
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("votes")
+    .insert({
+      session_id: sessionId,
+      phrase_id: phraseId,
+      vote,
+      was_correct: wasCorrect,
+    })
+    .select("id")
+    .single();
+
+  return data?.id ?? null;
+}
+
+export async function submitAnnotation(
+  voteId: string,
+  sessionId: string,
+  phraseId: string,
+  wordIndices: number[],
+  freeText: string | null
 ): Promise<void> {
-  await supabase.from("votes").insert({
+  if (wordIndices.length === 0 && !freeText) return;
+  await supabase.from("word_annotations").insert({
+    vote_id: voteId,
     session_id: sessionId,
     phrase_id: phraseId,
-    vote,
-    was_correct: wasCorrect,
+    word_indices: wordIndices,
+    free_text: freeText || null,
   });
 }
 

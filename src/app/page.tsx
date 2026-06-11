@@ -11,6 +11,7 @@ import {
   updateSessionDemographics,
   fetchRoundPhrases,
   submitVote,
+  submitAnnotation,
   fetchPhraseStats,
 } from "@/lib/game";
 import type {
@@ -39,7 +40,9 @@ export default function Home() {
   const [lastVote, setLastVote] = useState<SourceType | null>(null);
   const [lastCorrect, setLastCorrect] = useState(false);
   const [lastStats, setLastStats] = useState<PhraseVoteStats | null>(null);
+  const [lastVoteId, setLastVoteId] = useState<string | null>(null);
   const [voteLocked, setVoteLocked] = useState(false);
+  const [streak, setStreak] = useState(0);
 
   // Init session
   useEffect(() => {
@@ -47,43 +50,39 @@ export default function Home() {
       try {
         const s = await getOrCreateSession();
         setSession(s);
-        // If session already has demographics, skip onboarding
         if (s.age_bucket || s.primary_register) {
           await startRound(s.id);
         } else {
           setScreen("onboarding");
         }
       } catch {
-        // If Supabase isn't connected yet, show onboarding anyway
         setScreen("onboarding");
       }
     }
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const startRound = useCallback(
-    async (sessionId: string) => {
-      setScreen("loading");
-      const round = await fetchRoundPhrases(sessionId);
-      setPhrases(round);
-      setCurrentIndex(0);
-      setVoteHistory([]);
-      setLastVote(null);
-      setLastCorrect(false);
-      setLastStats(null);
-      setVoteLocked(false);
-      if (round.length > 0) {
-        setScreen("playing");
-      }
-    },
-    []
-  );
+  const startRound = useCallback(async (sessionId: string) => {
+    setScreen("loading");
+    const round = await fetchRoundPhrases(sessionId);
+    setPhrases(round);
+    setCurrentIndex(0);
+    setVoteHistory([]);
+    setLastVote(null);
+    setLastCorrect(false);
+    setLastStats(null);
+    setLastVoteId(null);
+    setVoteLocked(false);
+    setStreak(0);
+    if (round.length > 0) {
+      setScreen("playing");
+    }
+  }, []);
 
   const accuracy =
     voteHistory.length > 0
       ? Math.round(
-          (voteHistory.filter((v) => v.wasCorrect).length /
-            voteHistory.length) *
+          (voteHistory.filter((v) => v.wasCorrect).length / voteHistory.length) *
             100
         )
       : 0;
@@ -114,8 +113,8 @@ export default function Home() {
     const phrase = phrases[currentIndex];
     const wasCorrect = vote === phrase.source_type;
 
-    // Submit to Supabase
-    await submitVote(session.id, phrase.id, vote, wasCorrect);
+    // Submit to Supabase, get vote ID back
+    const voteId = await submitVote(session.id, phrase.id, vote, wasCorrect);
 
     // Fetch community stats
     const stats = await fetchPhraseStats(phrase.id);
@@ -125,18 +124,36 @@ export default function Home() {
     setLastVote(vote);
     setLastCorrect(wasCorrect);
     setLastStats(stats);
+    setLastVoteId(voteId);
+    setStreak((prev) => (wasCorrect ? prev + 1 : 0));
     setScreen("reveal");
+  }
 
-    // Auto-advance after 1.5s
-    setTimeout(() => {
-      if (currentIndex + 1 >= phrases.length) {
-        setScreen("end");
-      } else {
-        setCurrentIndex((i) => i + 1);
-        setVoteLocked(false);
-        setScreen("playing");
-      }
-    }, 1500);
+  function advanceToNext() {
+    if (currentIndex + 1 >= phrases.length) {
+      setScreen("end");
+    } else {
+      setCurrentIndex((i) => i + 1);
+      setVoteLocked(false);
+      setScreen("playing");
+    }
+  }
+
+  async function handleRevealSave(wordIndices: number[], freeText: string | null) {
+    if (lastVoteId && session && phrases[currentIndex]) {
+      await submitAnnotation(
+        lastVoteId,
+        session.id,
+        phrases[currentIndex].id,
+        wordIndices,
+        freeText
+      );
+    }
+    advanceToNext();
+  }
+
+  function handleRevealSkip() {
+    advanceToNext();
   }
 
   async function handlePlayAgain() {
@@ -177,15 +194,10 @@ export default function Home() {
           stats={lastStats}
           currentIndex={currentIndex}
           totalPhrases={phrases.length}
-          accuracy={
-            voteHistory.length > 0
-              ? Math.round(
-                  (voteHistory.filter((v) => v.wasCorrect).length /
-                    voteHistory.length) *
-                    100
-                )
-              : 0
-          }
+          accuracy={accuracy}
+          streak={streak}
+          onSave={handleRevealSave}
+          onSkip={handleRevealSkip}
         />
       )}
 
