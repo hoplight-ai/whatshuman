@@ -1,10 +1,6 @@
 # What's Human?
 
-Extends workspace CLAUDE.md. This file wins inside this project.
-
-## Output guards
-
-- **Zero placeholders.** If Claude has the data, Claude fills it in. No `[INSERT X]`, `YOUR_X`, `<replace with>`, or any variant. Applies to all output: code, prompts, drafts, configs, names, paths, URLs. See CLAUDE.md 9.3.2.
+> Governed by ~/Documents/Claude/CONSTITUTION.md (v1.0). Global rules live there and win on conflict. This file: repo-specific only.
 
 ---
 
@@ -153,4 +149,9 @@ Staging files (in parent workspace `_staging/human-or-ai/`):
 - `ai_corpus_v2_expansion.csv` - 279 AI phrases (held, register balance)
 - `iter15_iter21_qwen_prompts.md` - Next generation prompts
 - `raw/` - Extracted iteration outputs (iter1 through iter14)
+
+---
+
+## Stack decision (2026-07-01, D6)
+Migrating off Lovable: extract the codebase line-for-line from Lovable into this repo's native stack (Supabase xrjvyagopnjlqfqvwlbg + Vercel). Lovable subscription gets cancelled after migration. Tracked as pm_open_loops item_292.
 
