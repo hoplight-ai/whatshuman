@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Human or AI? - A perception game for the LLM era",
   description:
-    "Can you tell human writing from AI writing? Vote on 30 short phrases and see how you compare.",
+    "Can you tell human writing from AI writing? Vote on short phrases and see how you compare.",
   openGraph: {
     title: "Human or AI?",
     description: "Can you tell the difference?",
