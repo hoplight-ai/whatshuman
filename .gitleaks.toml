@@ -1,0 +1,33 @@
+# gitleaks config. Leapfrog L3, 2026-08-09.
+#
+# A credential that reaches a GitHub repo is scraped within minutes of that repo going public.
+# Until 2026-08-09 nothing in this folder looked for one, at commit time or afterwards.
+#
+# useDefault pulls in gitleaks' whole built-in rule set (Supabase JWTs, sb_secret_ keys, AWS,
+# Anthropic, OpenAI, GitHub tokens, generic high-entropy assignments, ~170 rules). Do not replace
+# it with a hand-written list; the point of a scanner is that it knows shapes you have not thought of.
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------------------------
+# Allowlist. Read this before adding to it.
+#
+# The only things allowlisted are paths that cannot hold a live credential by construction:
+# lockfiles (transitive hashes) and *.example files (deliberate placeholders).
+#
+# Do NOT allowlist "the file where the browser key lives". quick-tools effectively did that with
+# tools/dashboard.html, and on 2026-06-18 a SERVICE-ROLE key landed in that same file (commit
+# f277527d, removed from HEAD, still in the pack file). A path allowlist waves that straight through.
+#
+# The pre-commit scan reads the staged diff only, so an untouched publishable-key line never fires.
+# If you must re-commit one, use a `gitleaks:allow` comment on the line or a fingerprint in
+# .gitleaksignore. Both leave a trace a reviewer can see; `--no-verify` leaves none.
+# ---------------------------------------------------------------------------------------------
+[[allowlists]]
+description = "Lockfiles and deliberate placeholder files"
+paths = [
+  '''package-lock\.json$''',
+  '''(^|/)deno\.lock$''',
+  '''\.example$''',
+  '''\.env[^/]*\.example$''',
+]

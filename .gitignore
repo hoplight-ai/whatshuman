@@ -34,3 +34,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Secrets. Leapfrog L3, 2026-08-09.
+# `.env*` is deliberately broader than `.env*.local`. The narrower pattern is what let
+# ai-policy-tool/.env and whatshuman/.env.production become tracked files: neither ends in
+# `.local`, so nothing stopped them. The negation keeps deliberate *.example templates tracked.
+# `.credentials.local` holds minted passphrases in plaintext (vault, roam). They cannot be
+# recovered from an argon2 hash, so the local copy is the only record and it must never travel.
+.env*
+!.env*.example
+.credentials.local
+*.credentials.local

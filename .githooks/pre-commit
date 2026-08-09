@@ -1,0 +1,46 @@
+#!/bin/sh
+# Pre-commit secret scan. Leapfrog L3, 2026-08-09.
+#
+# This hook REFUSES the commit when a credential is staged. It does not warn and continue.
+# A warning that scrolls past is indistinguishable from no scanner at all.
+#
+# It is version-controlled and reached through core.hooksPath, which `npm run prepare` sets on
+# every `npm install`. A plain .git/hooks/pre-commit would not travel with a clone; this does,
+# at the cost of one config line per checkout.
+#
+# It FAILS CLOSED when gitleaks is missing. That is deliberate: a scanner that silently skips
+# when it cannot see is worse than no scanner, because from the outside it still reads as
+# coverage. There is no bypass environment variable here on purpose. Git already has one escape
+# hatch, `git commit --no-verify`, and it is visible in the command you typed.
+
+set -e
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo ""
+  echo "  COMMIT REFUSED - the secret scanner is not installed, so nothing checked this commit."
+  echo ""
+  echo "  Install it once and this goes away:"
+  echo "      brew install gitleaks"
+  echo ""
+  echo "  If you are certain this commit carries no credential, and only then:"
+  echo "      git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+# --staged scans the staged diff only, so an untouched line carrying a publishable key stays quiet.
+# --redact means the value is never printed, not to your terminal and not into your shell history.
+# --verbose prints the file, line, rule and the .gitleaksignore fingerprint for each hit. Without
+# it you get "leaks found: 2" and no way to act on it.
+if ! gitleaks git --pre-commit --staged --redact --verbose --no-banner --log-level error "$(git rev-parse --show-toplevel)"; then
+  echo ""
+  echo "  COMMIT REFUSED - a credential was found in the staged changes (listed above, value redacted)."
+  echo ""
+  echo "  Do NOT just delete the line and re-commit if it was already pushed: removing it from HEAD"
+  echo "  leaves it in the pack file, and it is still scrapeable. See ../_agent-rules/secrets.md."
+  echo ""
+  echo "  If this is a false positive: add a 'gitleaks:allow' comment on that line, or pin a"
+  echo "  fingerprint in .gitleaksignore. Both leave a trace a reviewer can see."
+  echo ""
+  exit 1
+fi
