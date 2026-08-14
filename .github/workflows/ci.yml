@@ -1,0 +1,39 @@
+# Every push gets checked. Leapfrog L2, 2026-08-09 (rayli); rolled out here 2026-08-14.
+#
+# NO SECRETS IN THIS FILE, AND NONE MAY BE ADDED TO IT.
+
+name: ci
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    # This name string is what a required status check would match on. Do not rename it.
+    name: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          # Matches the Vercel project's own nodeVersion (24.x), so CI builds on what production
+          # builds on.
+          node-version: '24'
+          cache: npm
+
+      - name: install
+        id: install
+        run: npm ci
+
+      - name: build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run build
