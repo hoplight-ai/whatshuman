@@ -1,6 +1,13 @@
 # Every push gets checked. Leapfrog L2, 2026-08-09 (rayli); rolled out here 2026-08-14.
 #
-# NO SECRETS IN THIS FILE, AND NONE MAY BE ADDED TO IT.
+# NO SECRETS IN THIS FILE, AND NONE MAY BE ADDED TO IT. The build step below reads three
+# repository VARIABLES (gh variable set, not gh secret set) — NEXT_PUBLIC_SUPABASE_URL,
+# NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_ROUND_LENGTH. None of the three is sensitive: the
+# anon key is RLS-protected and ships inside every client bundle regardless (this repo's own
+# CLAUDE.md calls it "safe for client-side"), and root CLAUDE.md already records it in cleartext.
+# They're variables rather than literals in this file only so gitleaks doesn't flag a JWT-shaped
+# string that has no secret behind it. The build needs them because the "/" page constructs a
+# Supabase client during static generation and throws without them.
 
 name: ci
 
@@ -36,4 +43,8 @@ jobs:
 
       - name: build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_ROUND_LENGTH: ${{ vars.NEXT_PUBLIC_ROUND_LENGTH }}
         run: npm run build
