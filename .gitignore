@@ -45,3 +45,6 @@ next-env.d.ts
 !.env*.example
 .credentials.local
 *.credentials.local
+
+# Claude Code session state (per-machine; launch.json stays tracked where it already is)
+.claude/
