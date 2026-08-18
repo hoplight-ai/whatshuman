@@ -45,7 +45,7 @@ for name in $VARS; do
   echo "--- $name"
   # Remove first so re-running is safe. A missing var is not an error here.
   npx --yes vercel@latest env rm "$name" production --yes || true
-  printf '%s' "$value" | npx --yes vercel@latest env add "$name" production
+  printf '%s' "$value" | npx --yes vercel@latest env add "$name" production --no-sensitive
 done
 
 echo
