@@ -155,3 +155,32 @@ Staging files (in parent workspace `_staging/human-or-ai/`):
 ## Stack decision (2026-07-01, D6)
 Migrating off Lovable: extract the codebase line-for-line from Lovable into this repo's native stack (Supabase xrjvyagopnjlqfqvwlbg + Vercel). Lovable subscription gets cancelled after migration. Tracked as pm_open_loops item_292.
 
+---
+
+## Moved here from the shared instruction file, 2026-08-25
+
+> This text used to load into every session on the machine. It now loads only here. It is
+> byte-identical to what the shared file carried; nothing was summarised or dropped. Where it
+> overlaps what this file already said, the two are BOTH kept deliberately rather than merged,
+> because silently choosing between two versions of a safety rule is how a live warning
+> disappears. If they contradict each other, that is worth reporting to Whit.
+
+### whatshuman (What's Human? game)
+- **Path:** `~/code/whatshuman` (clone here if missing: `git clone git@github.com:hoplight-ai/whatshuman.git ~/code/whatshuman`)
+- **Stack:** Next.js 14 + TypeScript + Tailwind + Supabase
+- **Build:** `npm run build` (runs `next build`)
+- **Vercel project:** `whatshuman`
+- **Live URL:** https://whatshuman.vercel.app (target, may not be configured yet)
+- **Supabase project:** `hoplight-ai's Project` (ref: `xrjvyagopnjlqfqvwlbg`)
+- **Supabase URL:** `https://xrjvyagopnjlqfqvwlbg.supabase.co`
+- **Supabase anon key:** NOT WRITTEN HERE ANY MORE. It was pasted in full into the shared
+  instruction file, so every session on this machine loaded a live key it had no use for. The
+  secret scanner refused this file the first time it was committed, which is how it was found.
+  Read it from this project`s settings on the hosting dashboard, or from the deployed page, which
+  is where it legitimately ships.
+  **This is an anon key, so it is public by design and this is tidiness rather than an incident** -
+  it is the key that ships inside the browser code of the live site. The service key is a different
+  thing entirely and has never been in this file.
+  **The value itself was not rotated and does not need to be.** If that ever changes, it is a
+  decision for Whit, not a cleanup.
+- **Env vars needed on Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_ROUND_LENGTH=30`
