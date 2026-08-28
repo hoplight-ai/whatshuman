@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "env:sync-prod": "bash scripts/sync-prod-env.sh",
-    "verify:prod": "node scripts/verify-prod.mjs"
+    "verify:prod": "node scripts/verify-prod.mjs",
+    "verify:preview": "node scripts/check-preview-meta.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.1",
