@@ -18,6 +18,11 @@
  * correctly sized and correctly typed. It cannot tell you whether the card is legible. The only
  * test for that is pasting the URL into a real text message and looking at it.
  *
+ * One thing to know before reading a local run. og:image is ABSOLUTE by design, so pointing
+ * WH_SITE at a local build still fetches production's card, not the one you just rendered. That is
+ * correct — an absolute URL is the thing being asserted — but it means a local green does not prove
+ * your new card shipped. Only a run against the deployed site does.
+ *
  * Usage:  npm run verify:preview          (or WH_SITE=https://... npm run verify:preview)
  * Exit:   0 all checks pass · 1 a check failed · 2 nothing could be measured (network/DNS)
  */

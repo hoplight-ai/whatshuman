@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 // WHAT A PASTED LINK LOOKS LIKE, which for a party game is the entire distribution channel.
@@ -31,7 +31,6 @@ export const metadata: Metadata = {
     title: "Human or AI?",
     description: BLURB,
   },
-  themeColor: "#0d1117",
   // Without this a saved copy opens inside Safari's chrome. `title` is the label under the icon:
   // the short name, not the <title>, because iOS truncates at roughly twelve characters.
   appleWebApp: {
@@ -39,10 +38,24 @@ export const metadata: Metadata = {
     title: "Human or AI",
     statusBarStyle: "black-translucent",
   },
-  // Next emits only the standardised `mobile-web-app-capable`. Current Safari honours the
-  // manifest's display:"standalone", so this is belt and braces — but older iOS reads only this
-  // spelling and the failure it prevents is silent.
-  other: { "apple-mobile-web-app-capable": "yes" },
+  // Chrome on Android reads this spelling and ignores the apple- prefixed one that `appleWebApp`
+  // above emits. Measured against the served page on 2026-08-28: Next 14.2 wrote
+  // `apple-mobile-web-app-capable` twice and `mobile-web-app-capable` not at all, so the tag the
+  // larger phone platform actually reads was the one missing.
+  other: { "mobile-web-app-capable": "yes" },
+};
+
+// THIS BLOCK BELONGS HERE AND NOT IN `metadata`, and the difference is invisible except in the
+// served HTML. `themeColor` sat in the metadata export above until 2026-08-28. Next 14 does not
+// support it there: it printed "Unsupported metadata themeColor is configured in metadata export"
+// on every build, four times, and then dropped the tag — so the browser bar stayed default white
+// above an app whose whole surface is #0d1117, and no page, log or dashboard said so. Declaring
+// `width` and `initialScale` alongside it keeps the viewport tag Next was emitting by default,
+// which this export would otherwise replace.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0d1117",
 };
 
 // Which commit is actually live. Vercel sets this at build time; a local build

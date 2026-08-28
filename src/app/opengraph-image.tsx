@@ -80,11 +80,10 @@ export default function OpengraphImage() {
           <Chip label="AI" color={AI} />
         </div>
 
-        <div style={{ display: "flex", width: "100%", height: 3, background: LINE, marginTop: 56 }} />
-
-        <div style={{ display: "flex", color: MUTED, fontSize: 30, marginTop: 24 }}>
-          Vote on short phrases and see how you compare with the room.
-        </div>
+        {/* A rule and the line "Vote on short phrases and see how you compare with the room" used
+            to sit here. Deleted 2026-08-28: og:description is the same sentence, and every client
+            that shows this picture prints that sentence in grey directly beneath it. The card was
+            spending its bottom third repeating the caption it ships with. */}
       </div>
     ),
     size
