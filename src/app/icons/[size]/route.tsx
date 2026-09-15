@@ -17,7 +17,8 @@ export function generateStaticParams() {
 
 export const dynamicParams = false;
 
-export function GET(_request: Request, { params }: { params: { size: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ size: string }> }) {
+  const params = await props.params;
   const px = Number(params.size);
   if (!SIZES.includes(px as (typeof SIZES)[number])) {
     return new Response("Not found", { status: 404 });

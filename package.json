@@ -7,21 +7,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
     "env:sync-prod": "bash scripts/sync-prod-env.sh",
     "verify:prod": "node scripts/verify-prod.mjs",
     "verify:preview": "node scripts/check-preview-meta.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.1",
-    "next": "14.2.35",
-    "react": "^18",
-    "react-dom": "^18"
+    "next": "16.3.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
