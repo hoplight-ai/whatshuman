@@ -38,11 +38,17 @@ export const metadata: Metadata = {
     title: "Human or AI",
     statusBarStyle: "black-translucent",
   },
-  // Chrome on Android reads this spelling and ignores the apple- prefixed one that `appleWebApp`
-  // above emits. Measured against the served page on 2026-08-28: Next 14.2 wrote
-  // `apple-mobile-web-app-capable` twice and `mobile-web-app-capable` not at all, so the tag the
-  // larger phone platform actually reads was the one missing.
-  other: { "mobile-web-app-capable": "yes" },
+  // THE TWO SPELLINGS OF "install me to the home screen", and which one Next emits has now flipped
+  // twice. Android reads `mobile-web-app-capable`; iOS reads `apple-mobile-web-app-capable`. Both
+  // have to be on the page, and `appleWebApp.capable` above only ever writes one of them.
+  //
+  // Measured against the served page on 2026-08-28: Next 14.2 wrote `apple-mobile-web-app-capable`
+  // twice and `mobile-web-app-capable` not at all, so this line supplied the Android spelling.
+  // Measured again on 2026-09-15 on Next 16.3.5, after the 14 -> 16 upgrade: `appleWebApp.capable`
+  // now emits `mobile-web-app-capable` instead, which made this line a duplicate and dropped the
+  // iOS tag entirely. So this line now supplies the apple spelling and the page carries one of each.
+  // Nothing warns when it flips: the tag just stops being written.
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 // THIS BLOCK BELONGS HERE AND NOT IN `metadata`, and the difference is invisible except in the
