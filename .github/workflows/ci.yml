@@ -44,7 +44,8 @@ jobs:
       - name: build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_ROUND_LENGTH: ${{ vars.NEXT_PUBLIC_ROUND_LENGTH }}
+          # 2026-09-25: the app is the restored Lovable build (Vite), which reads VITE_* names.
+          # The repository variables keep their old NEXT_PUBLIC_* names; only the mapping changed.
+          VITE_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: npm run build
