@@ -156,8 +156,8 @@ export function PhraseCard({
       {/* Click-to-explain (correct guesses only) */}
       {vote !== null && correct && (
         <div className="mb-6 fade-in">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">
-            Which words tipped you off? Tap any word.
+          <p className="mb-2 text-sm font-medium text-foreground">
+            What gave it away?
           </p>
           <p className="font-serif text-lg leading-relaxed text-foreground">
             {phrase.text.split(/(\s+)/).map((token, i) => {
@@ -189,17 +189,15 @@ export function PhraseCard({
             })}
           </p>
           <div className="mt-4">
-            <label htmlFor="qualitative" className="text-xs font-medium text-muted-foreground">
-              Anything else? (optional)
-            </label>
             <textarea
               id="qualitative"
+              aria-label="What gave it away, in your own words (optional)"
               value={qualitative}
               onChange={(e) => setQualitative(e.target.value.slice(0, 500))}
               maxLength={500}
               rows={2}
               className="mt-1 w-full resize-none rounded-lg border border-border bg-background p-2 text-sm text-foreground focus:border-foreground focus:outline-none"
-              placeholder="What stood out?"
+              placeholder="Tap the words above, or say it here (optional)"
             />
             <p className="mt-1 text-right text-[10px] text-muted-foreground">{qualitative.length}/500</p>
           </div>
@@ -249,7 +247,7 @@ export function PhraseCard({
                 return (
                   <div key={tellId}>
                     <p className="text-xs font-semibold text-foreground">
-                      {tellId}: {t.name}
+                      {t.name}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{t.short}</p>
                   </div>

@@ -74,7 +74,7 @@ export const TELLS: Record<string, { name: string; short: string }> = {
   T57: { name: "Anthropomorphic subject-verb", short: "Abstractions given human agency: 'the data suggests,' 'the market rewards,' 'the evidence points to.'" },
 
   // Category 9: Metaphor and imagery
-  T58: { name: "Stock metaphor library", short: "Dead metaphors AI defaults to: tip of the iceberg, north star, paradigm shift, move the needle, pave the way." },
+  T58: { name: "Stock metaphor library", short: "Worn-out figures of speech AI reaches for: race to the bottom, one-way street, path forward, north star." },
   T67: { name: "Metaphor inconsistency", short: "Mixes metaphors freely across sentences or extends one too neatly — humans are messier." },
 
   // Category 10: Argumentative structure
