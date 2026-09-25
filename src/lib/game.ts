@@ -1,213 +1,209 @@
-import { supabase } from "./supabase";
-import type {
-  Phrase,
-  Session,
-  SourceType,
-  AgeBucket,
-  PrimaryRegister,
-  PhraseVoteStats,
-} from "./types";
+import { supabase, type Phrase, type SourceType, type Register } from "./supabase";
 
-const ROUND_LENGTH = parseInt(process.env.NEXT_PUBLIC_ROUND_LENGTH || "30", 10);
-const SESSION_KEY = "whatshuman_session_id";
+const envLen = Number(import.meta.env.VITE_ROUND_LENGTH);
+export const ROUND_LENGTH = Number.isFinite(envLen) && envLen > 0 ? Math.floor(envLen) : 10;
+export const MAX_ROUND_LENGTH = 30;
+export const ROUND_INCREMENT = 5;
 
-// --- Session management ---
-
-function getStoredSessionId(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(SESSION_KEY);
+export function nextRoundLength(current: number): number {
+  return Math.min(current + ROUND_INCREMENT, MAX_ROUND_LENGTH);
 }
 
-function storeSessionId(id: string): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(SESSION_KEY, id);
-}
+// Pre-fetch the round's phrases once: balance ~50/50 human/AI, exclude already-seen ids.
+export async function fetchRoundPhrases(excludeIds: string[] = [], length = ROUND_LENGTH): Promise<Phrase[]> {
+  const perSide = Math.ceil(length / 2);
+  const POOL = Math.max(perSide * 4, 40);
 
-async function hashUserAgent(): Promise<string | null> {
-  if (typeof window === "undefined") return null;
-  const ua = navigator.userAgent;
-  const buf = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(ua)
-  );
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+  const baseQuery = (source: SourceType) => {
+    let q = supabase
+      .from("phrases")
+      .select(
+        "id, text, word_count, source_type, register, human_source, human_source_url, human_era, ai_model_internal, ai_prompt_id, tell_density, tells_present, approved",
+      )
+      .eq("approved", true)
+      .eq("source_type", source)
+      .limit(POOL);
+    if (excludeIds.length > 0) {
+      q = q.not("id", "in", `(${excludeIds.join(",")})`);
+    }
+    return q;
+  };
 
-export async function getOrCreateSession(): Promise<Session> {
-  const existingId = getStoredSessionId();
+  const [humanRes, aiRes] = await Promise.all([baseQuery("human"), baseQuery("ai")]);
 
-  if (existingId) {
-    const { data } = await supabase
-      .from("sessions")
-      .select("*")
-      .eq("id", existingId)
-      .single();
+  if (humanRes.error) throw humanRes.error;
+  if (aiRes.error) throw aiRes.error;
 
-    if (data) {
-      // Touch last_seen_at
-      await supabase
-        .from("sessions")
-        .update({ last_seen_at: new Date().toISOString() })
-        .eq("id", existingId);
-      return data as Session;
+  const humans = shuffle(humanRes.data ?? []) as Phrase[];
+  const ais = shuffle(aiRes.data ?? []) as Phrase[];
+
+  const out: Phrase[] = [];
+  let hi = 0;
+  let ai = 0;
+  while (out.length < length && (hi < humans.length || ai < ais.length)) {
+    if (hi < humans.length && (out.length % 2 === 0 || ai >= ais.length)) {
+      out.push(humans[hi++]);
+    } else if (ai < ais.length) {
+      out.push(ais[ai++]);
+    } else if (hi < humans.length) {
+      out.push(humans[hi++]);
     }
   }
-
-  // Create new session
-  const hash = await hashUserAgent();
-  const { data, error } = await supabase
-    .from("sessions")
-    .insert({ user_agent_hash: hash })
-    .select()
-    .single();
-
-  if (error || !data) throw new Error("Failed to create session");
-
-  storeSessionId(data.id);
-  return data as Session;
+  return shuffle(out).slice(0, length);
 }
 
-export async function updateSessionDemographics(
-  sessionId: string,
-  ageBucket: AgeBucket | null,
-  primaryRegister: PrimaryRegister | null
-): Promise<void> {
-  await supabase
-    .from("sessions")
-    .update({
-      age_bucket: ageBucket,
-      primary_register: primaryRegister,
-    })
-    .eq("id", sessionId);
-}
-
-// --- Phrase selection ---
-
-export async function fetchRoundPhrases(
-  sessionId: string
-): Promise<Phrase[]> {
-  // Get phrase IDs already voted on in this session
-  const { data: existingVotes } = await supabase
-    .from("votes")
-    .select("phrase_id")
-    .eq("session_id", sessionId);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const seenIds = (existingVotes || []).map((v: any) => v.phrase_id as string);
-
-  // Fetch all approved phrases not yet seen
-  let query = supabase
-    .from("phrases")
-    .select("*")
-    .eq("approved", true);
-
-  if (seenIds.length > 0) {
-    // Supabase "not in" filter
-    query = query.not("id", "in", `(${seenIds.join(",")})`);
-  }
-
-  const { data: allPhrases, error } = await query;
-
-  if (error || !allPhrases) return [];
-
-  const phrases = allPhrases as Phrase[];
-
-  // Separate by source type for balanced selection
-  const human = phrases.filter((p) => p.source_type === "human");
-  const ai = phrases.filter((p) => p.source_type === "ai");
-
-  // Shuffle both pools
-  shuffle(human);
-  shuffle(ai);
-
-  // Interleave: take half from each, up to ROUND_LENGTH
-  const half = Math.ceil(ROUND_LENGTH / 2);
-  const selected: Phrase[] = [];
-
-  const humanPick = human.slice(0, half);
-  const aiPick = ai.slice(0, half);
-
-  // If one pool is short, fill from the other
-  selected.push(...humanPick, ...aiPick);
-
-  // If we still need more (one pool was too small)
-  if (selected.length < ROUND_LENGTH) {
-    const remaining = phrases.filter(
-      (p) => !selected.find((s) => s.id === p.id)
-    );
-    shuffle(remaining);
-    selected.push(...remaining.slice(0, ROUND_LENGTH - selected.length));
-  }
-
-  // Trim to round length and shuffle the final order
-  const round = selected.slice(0, ROUND_LENGTH);
-  shuffle(round);
-
-  return round;
-}
-
-// --- Voting ---
-
-export async function submitVote(
-  sessionId: string,
-  phraseId: string,
-  vote: SourceType,
-  wasCorrect: boolean
-): Promise<string | null> {
-  const { data } = await supabase
-    .from("votes")
-    .insert({
-      session_id: sessionId,
-      phrase_id: phraseId,
-      vote,
-      was_correct: wasCorrect,
-    })
-    .select("id")
-    .single();
-
-  return data?.id ?? null;
-}
-
-export async function submitAnnotation(
-  voteId: string,
-  sessionId: string,
-  phraseId: string,
-  wordIndices: number[],
-  freeText: string | null
-): Promise<void> {
-  if (wordIndices.length === 0 && !freeText) return;
-  await supabase.from("word_annotations").insert({
-    vote_id: voteId,
-    session_id: sessionId,
-    phrase_id: phraseId,
-    word_indices: wordIndices,
-    free_text: freeText || null,
-  });
-}
-
-export async function fetchPhraseStats(
-  phraseId: string
-): Promise<PhraseVoteStats | null> {
-  const { data } = await supabase
-    .from("phrase_vote_stats")
-    .select("*")
-    .eq("phrase_id", phraseId)
-    .single();
-
-  return (data as PhraseVoteStats) || null;
-}
-
-// --- Helpers ---
-
-function shuffle<T>(arr: T[]): void {
-  for (let i = arr.length - 1; i > 0; i--) {
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+export interface CommunitySplit {
+  human_pct: number;
+  ai_pct: number;
+  total: number;
+}
+
+// Read community split via the votes table. Column is `vote` (not `vote_value`).
+export async function getCommunitySplit(phraseId: string): Promise<CommunitySplit> {
+  const [humanRes, aiRes] = await Promise.all([
+    supabase
+      .from("votes")
+      .select("id", { count: "exact", head: true })
+      .eq("phrase_id", phraseId)
+      .eq("vote", "human"),
+    supabase
+      .from("votes")
+      .select("id", { count: "exact", head: true })
+      .eq("phrase_id", phraseId)
+      .eq("vote", "ai"),
+  ]);
+  const human = humanRes.count ?? 0;
+  const ai = aiRes.count ?? 0;
+  const total = human + ai;
+  if (total === 0) return { human_pct: 50, ai_pct: 50, total: 0 };
+  return {
+    human_pct: Math.round((human / total) * 100),
+    ai_pct: Math.round((ai / total) * 100),
+    total,
+  };
+}
+
+export interface VoteRecord {
+  session_id: string;
+  phrase_id: string;
+  vote: SourceType;
+  was_correct: boolean;
+}
+
+// Insert a vote. Returns the inserted row's id so callers can attach
+// follow-up records (e.g. vote_explanations) via FK. Throws with full
+// Supabase error on failure so the caller can log details and surface a UI warning.
+export async function recordVote(v: VoteRecord): Promise<string | null> {
+  const { data, error } = await supabase.from("votes").insert(v).select("id").single();
+  if (error) {
+    // Treat unique_violation (Postgres 23505 / HTTP 409) as success — the row is already there.
+    const status = (error as { status?: number; code?: string }).status;
+    if (error.code === "23505" || status === 409) {
+      console.debug("[recordVote] vote already recorded — treating as success");
+      return null;
+    }
+    // Log full error object (code, message, details, hint) for diagnosis.
+    console.error("[recordVote] Supabase insert failed:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payload: v,
+    });
+    throw error;
+  }
+  return data.id as string;
+}
+
+export interface VoteExplanation {
+  vote_id: string;
+  clicked_word_indices: number[];
+  qualitative_text: string | null;
+}
+
+// Insert a vote explanation. Errors are logged but never thrown — the caller
+// treats failure as a no-op and continues to the next phrase.
+export async function recordVoteExplanation(e: VoteExplanation): Promise<void> {
+  const { error } = await supabase.from("vote_explanations").insert(e);
+  if (error) {
+    console.error("[recordVoteExplanation] Supabase insert failed:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payload: e,
+    });
   }
 }
 
-export function getRoundLength(): number {
-  return ROUND_LENGTH;
+// Aggregate the most-clicked word indices across correct votes for a phrase.
+// Returns the set of word indices that fall in the top `topPct` fraction
+// (by frequency). Errors are swallowed and an empty set is returned.
+export async function getTopClickedWordIndices(
+  phraseId: string,
+  topPct = 0.3,
+): Promise<Set<number>> {
+  try {
+    // Get all correct vote ids for this phrase
+    const { data: voteRows, error: voteErr } = await supabase
+      .from("votes")
+      .select("id")
+      .eq("phrase_id", phraseId)
+      .eq("was_correct", true);
+    if (voteErr) throw voteErr;
+    const voteIds = (voteRows ?? []).map((r) => r.id as string);
+    if (voteIds.length === 0) return new Set();
+
+    const { data: explRows, error: explErr } = await supabase
+      .from("vote_explanations")
+      .select("clicked_word_indices")
+      .in("vote_id", voteIds);
+    if (explErr) throw explErr;
+
+    const counts = new Map<number, number>();
+    for (const row of explRows ?? []) {
+      const indices = (row.clicked_word_indices as number[] | null) ?? [];
+      for (const i of indices) {
+        counts.set(i, (counts.get(i) ?? 0) + 1);
+      }
+    }
+    if (counts.size === 0) return new Set();
+
+    // Top 30% by frequency: take the indices whose count >= threshold
+    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    const cutoff = Math.max(1, Math.ceil(sorted.length * topPct));
+    return new Set(sorted.slice(0, cutoff).map(([idx]) => idx));
+  } catch (e) {
+    console.error("[getTopClickedWordIndices] failed:", e);
+    return new Set();
+  }
+}
+
+export interface SessionUpsert {
+  id: string;
+  age_bucket?: string | null;
+  primary_register?: Register | null;
+}
+
+export async function upsertSession(s: SessionUpsert) {
+  const { error } = await supabase.from("sessions").upsert(s, { onConflict: "id" });
+  if (error) {
+    console.error("[upsertSession] Supabase upsert failed:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payload: s,
+    });
+    throw error;
+  }
 }

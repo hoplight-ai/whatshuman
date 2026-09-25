@@ -48,3 +48,11 @@ next-env.d.ts
 
 # Claude Code session state (per-machine; launch.json stays tracked where it already is)
 .claude/
+
+# Vite / TanStack Start build output (Lovable stack, restored 2026-09-25)
+/dist
+/dist-ssr
+.tanstack/
+.wrangler/
+.output
+.nitro
